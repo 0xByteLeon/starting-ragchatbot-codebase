@@ -110,3 +110,4 @@ To add new search tools:
 - Environment variables override dataclass defaults
 - always us uv to run the server do not use pip directly
 - make sure to use uv to manage all dependencies
+- don't run the server using ./run.sh I will start it myself

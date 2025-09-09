@@ -5,7 +5,7 @@ const API_URL = '/api';
 let currentSessionId = null;
 
 // DOM elements
-let chatMessages, chatInput, sendButton, totalCourses, courseTitles;
+let chatMessages, chatInput, sendButton, totalCourses, courseTitles, newChatButton;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
     sendButton = document.getElementById('sendButton');
     totalCourses = document.getElementById('totalCourses');
     courseTitles = document.getElementById('courseTitles');
+    newChatButton = document.getElementById('newChatButton');
     
     setupEventListeners();
     createNewSession();
@@ -29,6 +30,8 @@ function setupEventListeners() {
         if (e.key === 'Enter') sendMessage();
     });
     
+    // New chat button
+    newChatButton.addEventListener('click', startNewChat);
     
     // Suggested questions
     document.querySelectorAll('.suggested-item').forEach(button => {
@@ -122,10 +125,26 @@ function addMessage(content, type, sources = null, isWelcome = false) {
     let html = `<div class="message-content">${displayContent}</div>`;
     
     if (sources && sources.length > 0) {
+        // Handle both old format (strings) and new format (objects with text/link)
+        const sourcesHtml = sources.map(source => {
+            if (typeof source === 'string') {
+                // Legacy format - just display as text
+                return `<span class="source-text">${escapeHtml(source)}</span>`;
+            } else if (source.text) {
+                // New format with potential link
+                if (source.link) {
+                    return `<a href="${escapeHtml(source.link)}" target="_blank" class="source-link">${escapeHtml(source.text)}</a>`;
+                } else {
+                    return `<span class="source-text">${escapeHtml(source.text)}</span>`;
+                }
+            }
+            return '';
+        }).join(' ');
+        
         html += `
             <details class="sources-collapsible">
                 <summary class="sources-header">Sources</summary>
-                <div class="sources-content">${sources.join(', ')}</div>
+                <div class="sources-content">${sourcesHtml}</div>
             </details>
         `;
     }
@@ -150,6 +169,30 @@ async function createNewSession() {
     currentSessionId = null;
     chatMessages.innerHTML = '';
     addMessage('Welcome to the Course Materials Assistant! I can help you with questions about courses, lessons and specific content. What would you like to know?', 'assistant', null, true);
+}
+
+async function startNewChat() {
+    try {
+        // Clear current session on backend if it exists
+        if (currentSessionId) {
+            await fetch(`${API_URL}/sessions/${currentSessionId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+        }
+    } catch (error) {
+        console.warn('Failed to clear session on backend:', error);
+        // Continue with frontend cleanup even if backend cleanup fails
+    }
+    
+    // Clear frontend state and create new session
+    await createNewSession();
+    
+    // Clear and focus input
+    chatInput.value = '';
+    chatInput.focus();
 }
 
 // Load course statistics
