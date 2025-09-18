@@ -104,42 +104,62 @@ class RAGSystem:
     def query(self, query: str, session_id: Optional[str] = None) -> Tuple[str, List[str]]:
         """
         Process a user query using the RAG system with tool-based search.
-        
+
         Args:
             query: User's question
             session_id: Optional session ID for conversation context
-            
+
         Returns:
             Tuple of (response, sources list - empty for tool-based approach)
         """
-        # Create prompt for the AI with clear instructions
-        prompt = f"""Answer this question about course materials: {query}"""
-        
-        # Get conversation history if session exists
-        history = None
-        if session_id:
-            history = self.session_manager.get_conversation_history(session_id)
-        
-        # Generate response using AI with tools
-        response = self.ai_generator.generate_response(
-            query=prompt,
-            conversation_history=history,
-            tools=self.tool_manager.get_tool_definitions(),
-            tool_manager=self.tool_manager
-        )
-        
-        # Get sources from the search tool
-        sources = self.tool_manager.get_last_sources()
+        try:
+            # Validate API key is configured
+            if not self.config.ANTHROPIC_API_KEY or self.config.ANTHROPIC_API_KEY == "":
+                return "Error: Anthropic API key not configured. Please set ANTHROPIC_API_KEY in your .env file.", []
 
-        # Reset sources after retrieving them
-        self.tool_manager.reset_sources()
-        
-        # Update conversation history
-        if session_id:
-            self.session_manager.add_exchange(session_id, query, response)
-        
-        # Return response with sources from tool searches
-        return response, sources
+            # Create prompt for the AI with clear instructions
+            prompt = f"""Answer this question about course materials: {query}"""
+
+            # Get conversation history if session exists
+            history = None
+            if session_id:
+                history = self.session_manager.get_conversation_history(session_id)
+
+            # Generate response using AI with tools
+            response = self.ai_generator.generate_response(
+                query=prompt,
+                conversation_history=history,
+                tools=self.tool_manager.get_tool_definitions(),
+                tool_manager=self.tool_manager
+            )
+
+            # Get sources from the search tool
+            sources = self.tool_manager.get_last_sources()
+
+            # Reset sources after retrieving them
+            self.tool_manager.reset_sources()
+
+            # Update conversation history
+            if session_id:
+                self.session_manager.add_exchange(session_id, query, response)
+
+            # Return response with sources from tool searches
+            return response, sources
+
+        except Exception as e:
+            # Handle different types of errors with helpful messages
+            error_message = str(e)
+
+            if "authentication_error" in error_message or "invalid x-api-key" in error_message:
+                return "Error: Invalid Anthropic API key. Please check your ANTHROPIC_API_KEY in the .env file.", []
+            elif "rate_limit" in error_message:
+                return "Error: API rate limit exceeded. Please try again later.", []
+            elif "network" in error_message or "connection" in error_message:
+                return "Error: Network connection issue. Please check your internet connection.", []
+            else:
+                # Log the full error for debugging but return a user-friendly message
+                print(f"RAG System Error: {error_message}")
+                return f"Error: Query processing failed. {error_message}", []
     
     def get_course_analytics(self) -> Dict:
         """Get analytics about the course catalog"""

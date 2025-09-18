@@ -25,9 +25,26 @@ uv add package_name
 ```
 
 ### Environment Setup
-- Create `.env` file with `ANTHROPIC_API_KEY=your_key_here`
+**Required Configuration:**
+1. Create a `.env` file in the `backend` directory:
+   ```bash
+   cd backend
+   cp .env.example .env
+   ```
+2. Edit `.env` and add your Anthropic API key:
+   ```
+   ANTHROPIC_API_KEY=your_anthropic_api_key_here
+   ```
+   Get your API key from: https://console.anthropic.com/
+
+**Application URLs:**
 - Application runs on `http://localhost:8000`
 - API docs available at `http://localhost:8000/docs`
+
+**Troubleshooting:**
+- If you get "query failed" errors, check that your `ANTHROPIC_API_KEY` is set correctly in the `.env` file
+- The system will provide specific error messages for common issues (missing API key, invalid key, rate limits, etc.)
+- Run tests to verify system functionality: `uv run pytest tests/ -v`
 
 ## Architecture Overview
 
