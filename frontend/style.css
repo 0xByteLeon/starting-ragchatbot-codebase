@@ -70,9 +70,12 @@ body {
     padding: 0;
 }
 
-/* Header - Hidden */
+/* Header */
 header {
-    display: none;
+    padding: 2rem;
+    text-align: center;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--surface);
 }
 
 header h1 {
@@ -89,6 +92,14 @@ header h1 {
     font-size: 0.95rem;
     color: var(--text-secondary);
     margin-top: 0.5rem;
+}
+
+.header-divider {
+    border: none;
+    border-top: 1px solid var(--border-color);
+    margin: 1.5rem auto 0;
+    width: 100%;
+    max-width: 600px;
 }
 
 /* Main Content Area with Sidebar */
@@ -759,11 +770,16 @@ details[open] .suggested-header::before {
     }
     
     header {
-        padding: 1rem;
+        padding: 1.5rem 1rem;
     }
     
     header h1 {
         font-size: 1.5rem;
+    }
+    
+    .header-divider {
+        margin: 1rem auto 0;
+        max-width: 90%;
     }
     
     .chat-messages {
