@@ -88,20 +88,26 @@ class TestRAGSystem:
         assert call_args["tool_manager"] == mock_rag_system.tool_manager
 
     def test_sources_handling(self, mock_rag_system):
-        """Test that sources are properly retrieved and reset"""
-        # Mock tool manager to return sources
+        """Test that sources are properly returned from AI generator"""
+        # Mock AI generator to return response with sources
         mock_sources = [{"text": "Course A - Lesson 1", "link": "https://example.com/lesson/1"}]
-        mock_rag_system.tool_manager.get_last_sources = Mock(return_value=mock_sources)
-        mock_rag_system.tool_manager.reset_sources = Mock()
+
+        # Mock AI generator's generate_response to return tuple (response, sources)
+        mock_rag_system.ai_generator.generate_response = Mock(
+            return_value=("Test response", mock_sources)
+        )
 
         response, sources = mock_rag_system.query("Test query")
 
-        # Verify sources were retrieved
-        mock_rag_system.tool_manager.get_last_sources.assert_called_once()
-        assert sources == mock_sources
+        # Verify AI generator was called with tools
+        mock_rag_system.ai_generator.generate_response.assert_called_once()
+        call_args = mock_rag_system.ai_generator.generate_response.call_args[1]
+        assert "tools" in call_args
+        assert "tool_manager" in call_args
 
-        # Verify sources were reset after retrieval
-        mock_rag_system.tool_manager.reset_sources.assert_called_once()
+        # Verify sources were returned correctly
+        assert sources == mock_sources
+        assert response == "Test response"
 
     def test_course_analytics(self, mock_rag_system):
         """Test course analytics functionality"""
