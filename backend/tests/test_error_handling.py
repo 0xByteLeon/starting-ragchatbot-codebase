@@ -1,5 +1,5 @@
-import pytest
 from unittest.mock import Mock, patch
+
 from config import Config
 from rag_system import RAGSystem
 
@@ -9,10 +9,12 @@ class TestErrorHandling:
 
     def test_missing_api_key_error(self):
         """Test error handling when API key is missing"""
-        with patch('rag_system.DocumentProcessor'), \
-             patch('rag_system.VectorStore'), \
-             patch('rag_system.AIGenerator'), \
-             patch('rag_system.SessionManager'):
+        with (
+            patch("rag_system.DocumentProcessor"),
+            patch("rag_system.VectorStore"),
+            patch("rag_system.AIGenerator"),
+            patch("rag_system.SessionManager"),
+        ):
 
             config = Config()
             config.ANTHROPIC_API_KEY = ""  # Empty API key
@@ -26,13 +28,17 @@ class TestErrorHandling:
 
     def test_authentication_error_handling(self):
         """Test error handling for authentication errors"""
-        with patch('rag_system.DocumentProcessor'), \
-             patch('rag_system.VectorStore'), \
-             patch('rag_system.AIGenerator') as mock_ai, \
-             patch('rag_system.SessionManager'):
+        with (
+            patch("rag_system.DocumentProcessor"),
+            patch("rag_system.VectorStore"),
+            patch("rag_system.AIGenerator") as mock_ai,
+            patch("rag_system.SessionManager"),
+        ):
 
             # Mock AI generator to raise authentication error
-            mock_ai.return_value.generate_response.side_effect = Exception("authentication_error: invalid x-api-key")
+            mock_ai.return_value.generate_response.side_effect = Exception(
+                "authentication_error: invalid x-api-key"
+            )
 
             config = Config()
             config.ANTHROPIC_API_KEY = "invalid-key"
@@ -46,13 +52,17 @@ class TestErrorHandling:
 
     def test_rate_limit_error_handling(self):
         """Test error handling for rate limit errors"""
-        with patch('rag_system.DocumentProcessor'), \
-             patch('rag_system.VectorStore'), \
-             patch('rag_system.AIGenerator') as mock_ai, \
-             patch('rag_system.SessionManager'):
+        with (
+            patch("rag_system.DocumentProcessor"),
+            patch("rag_system.VectorStore"),
+            patch("rag_system.AIGenerator") as mock_ai,
+            patch("rag_system.SessionManager"),
+        ):
 
             # Mock AI generator to raise rate limit error
-            mock_ai.return_value.generate_response.side_effect = Exception("rate_limit exceeded")
+            mock_ai.return_value.generate_response.side_effect = Exception(
+                "rate_limit exceeded"
+            )
 
             config = Config()
             config.ANTHROPIC_API_KEY = "valid-key"
@@ -66,13 +76,17 @@ class TestErrorHandling:
 
     def test_network_error_handling(self):
         """Test error handling for network errors"""
-        with patch('rag_system.DocumentProcessor'), \
-             patch('rag_system.VectorStore'), \
-             patch('rag_system.AIGenerator') as mock_ai, \
-             patch('rag_system.SessionManager'):
+        with (
+            patch("rag_system.DocumentProcessor"),
+            patch("rag_system.VectorStore"),
+            patch("rag_system.AIGenerator") as mock_ai,
+            patch("rag_system.SessionManager"),
+        ):
 
             # Mock AI generator to raise network error
-            mock_ai.return_value.generate_response.side_effect = Exception("network connection failed")
+            mock_ai.return_value.generate_response.side_effect = Exception(
+                "network connection failed"
+            )
 
             config = Config()
             config.ANTHROPIC_API_KEY = "valid-key"
@@ -86,13 +100,17 @@ class TestErrorHandling:
 
     def test_generic_error_handling(self):
         """Test error handling for other generic errors"""
-        with patch('rag_system.DocumentProcessor'), \
-             patch('rag_system.VectorStore'), \
-             patch('rag_system.AIGenerator') as mock_ai, \
-             patch('rag_system.SessionManager'):
+        with (
+            patch("rag_system.DocumentProcessor"),
+            patch("rag_system.VectorStore"),
+            patch("rag_system.AIGenerator") as mock_ai,
+            patch("rag_system.SessionManager"),
+        ):
 
             # Mock AI generator to raise generic error
-            mock_ai.return_value.generate_response.side_effect = Exception("Unknown error occurred")
+            mock_ai.return_value.generate_response.side_effect = Exception(
+                "Unknown error occurred"
+            )
 
             config = Config()
             config.ANTHROPIC_API_KEY = "valid-key"
@@ -106,10 +124,12 @@ class TestErrorHandling:
 
     def test_successful_query_after_fix(self):
         """Test that queries work successfully when properly configured"""
-        with patch('rag_system.DocumentProcessor'), \
-             patch('rag_system.VectorStore'), \
-             patch('rag_system.AIGenerator') as mock_ai, \
-             patch('rag_system.SessionManager') as mock_sm:
+        with (
+            patch("rag_system.DocumentProcessor"),
+            patch("rag_system.VectorStore"),
+            patch("rag_system.AIGenerator") as mock_ai,
+            patch("rag_system.SessionManager") as mock_sm,
+        ):
 
             # Mock successful AI response
             mock_ai.return_value.generate_response.return_value = "Successful response"

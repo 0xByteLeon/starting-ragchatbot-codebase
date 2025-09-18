@@ -1,7 +1,7 @@
+from unittest.mock import Mock, patch
+
 import pytest
-from unittest.mock import Mock, patch, MagicMock
 from rag_system import RAGSystem
-from search_tools import ToolManager
 from vector_store import SearchResults
 
 
@@ -11,16 +11,18 @@ class TestRAGSystem:
     @pytest.fixture
     def mock_rag_system(self, test_config):
         """Create RAG system with mocked components"""
-        with patch('rag_system.DocumentProcessor'), \
-             patch('rag_system.VectorStore') as mock_vs, \
-             patch('rag_system.AIGenerator') as mock_ai, \
-             patch('rag_system.SessionManager') as mock_sm:
+        with (
+            patch("rag_system.DocumentProcessor"),
+            patch("rag_system.VectorStore") as mock_vs,
+            patch("rag_system.AIGenerator") as mock_ai,
+            patch("rag_system.SessionManager") as mock_sm,
+        ):
 
             # Setup mocks
             mock_vs.return_value.search.return_value = SearchResults(
                 documents=["Test content"],
                 metadata=[{"course_title": "Test Course", "lesson_number": 1}],
-                distances=[0.1]
+                distances=[0.1],
             )
 
             mock_ai.return_value.generate_response.return_value = "Test AI response"
@@ -43,7 +45,10 @@ class TestRAGSystem:
         mock_rag_system._mock_ai_generator.generate_response.assert_called_once()
         call_args = mock_rag_system._mock_ai_generator.generate_response.call_args[1]
 
-        assert call_args["query"] == "Answer this question about course materials: What is Python?"
+        assert (
+            call_args["query"]
+            == "Answer this question about course materials: What is Python?"
+        )
         assert call_args["conversation_history"] is None
         assert "tools" in call_args
         assert call_args["tool_manager"] is not None
@@ -55,12 +60,18 @@ class TestRAGSystem:
         """Test query with session ID for conversation history"""
         # Setup mock session history
         mock_history = "Previous conversation context"
-        mock_rag_system._mock_session_manager.get_conversation_history.return_value = mock_history
+        mock_rag_system._mock_session_manager.get_conversation_history.return_value = (
+            mock_history
+        )
 
-        response, sources = mock_rag_system.query("Follow-up question", session_id="test_session")
+        response, sources = mock_rag_system.query(
+            "Follow-up question", session_id="test_session"
+        )
 
         # Verify session manager was called
-        mock_rag_system._mock_session_manager.get_conversation_history.assert_called_once_with("test_session")
+        mock_rag_system._mock_session_manager.get_conversation_history.assert_called_once_with(
+            "test_session"
+        )
 
         # Verify AI generator received history
         call_args = mock_rag_system._mock_ai_generator.generate_response.call_args[1]
@@ -90,7 +101,9 @@ class TestRAGSystem:
     def test_sources_handling(self, mock_rag_system):
         """Test that sources are properly returned from AI generator"""
         # Mock AI generator to return response with sources
-        mock_sources = [{"text": "Course A - Lesson 1", "link": "https://example.com/lesson/1"}]
+        mock_sources = [
+            {"text": "Course A - Lesson 1", "link": "https://example.com/lesson/1"}
+        ]
 
         # Mock AI generator's generate_response to return tuple (response, sources)
         mock_rag_system.ai_generator.generate_response = Mock(
@@ -114,7 +127,9 @@ class TestRAGSystem:
         # Mock vector store analytics methods
         mock_rag_system._mock_vector_store.get_course_count.return_value = 5
         mock_rag_system._mock_vector_store.get_existing_course_titles.return_value = [
-            "Python Basics", "Advanced Python", "Web Development"
+            "Python Basics",
+            "Advanced Python",
+            "Web Development",
         ]
 
         analytics = mock_rag_system.get_course_analytics()
@@ -135,16 +150,25 @@ class TestRAGSystem:
         mock_course.title = "Test Course"
         mock_chunks = [Mock(), Mock(), Mock()]
 
-        mock_rag_system.document_processor.process_course_document.return_value = (mock_course, mock_chunks)
+        mock_rag_system.document_processor.process_course_document.return_value = (
+            mock_course,
+            mock_chunks,
+        )
 
         course, chunk_count = mock_rag_system.add_course_document("/path/to/test.pdf")
 
         # Verify document processing
-        mock_rag_system.document_processor.process_course_document.assert_called_once_with("/path/to/test.pdf")
+        mock_rag_system.document_processor.process_course_document.assert_called_once_with(
+            "/path/to/test.pdf"
+        )
 
         # Verify vector store operations
-        mock_rag_system._mock_vector_store.add_course_metadata.assert_called_once_with(mock_course)
-        mock_rag_system._mock_vector_store.add_course_content.assert_called_once_with(mock_chunks)
+        mock_rag_system._mock_vector_store.add_course_metadata.assert_called_once_with(
+            mock_course
+        )
+        mock_rag_system._mock_vector_store.add_course_content.assert_called_once_with(
+            mock_chunks
+        )
 
         # Verify results
         assert course == mock_course
@@ -153,7 +177,9 @@ class TestRAGSystem:
     def test_add_course_document_error(self, mock_rag_system):
         """Test error handling in course document addition"""
         # Mock document processor to raise exception
-        mock_rag_system.document_processor.process_course_document.side_effect = Exception("Processing error")
+        mock_rag_system.document_processor.process_course_document.side_effect = (
+            Exception("Processing error")
+        )
 
         course, chunk_count = mock_rag_system.add_course_document("/path/to/bad.pdf")
 
@@ -165,14 +191,21 @@ class TestRAGSystem:
         mock_rag_system._mock_vector_store.add_course_metadata.assert_not_called()
         mock_rag_system._mock_vector_store.add_course_content.assert_not_called()
 
-    @patch('rag_system.os.path.exists')
-    @patch('rag_system.os.listdir')
-    @patch('rag_system.os.path.isfile')
-    def test_add_course_folder_success(self, mock_isfile, mock_listdir, mock_exists, mock_rag_system):
+    @patch("rag_system.os.path.exists")
+    @patch("rag_system.os.listdir")
+    @patch("rag_system.os.path.isfile")
+    def test_add_course_folder_success(
+        self, mock_isfile, mock_listdir, mock_exists, mock_rag_system
+    ):
         """Test successful addition of course folder"""
         # Mock filesystem
         mock_exists.return_value = True
-        mock_listdir.return_value = ["course1.pdf", "course2.docx", "other.txt", "ignore.jpg"]
+        mock_listdir.return_value = [
+            "course1.pdf",
+            "course2.docx",
+            "other.txt",
+            "ignore.jpg",
+        ]
         mock_isfile.return_value = True
 
         # Mock existing course titles
@@ -181,8 +214,8 @@ class TestRAGSystem:
         # Mock document processing
         courses_data = [
             (Mock(title="Course 1"), [Mock(), Mock()]),  # 2 chunks
-            (Mock(title="Course 2"), [Mock()]),          # 1 chunk
-            (Mock(title="Course 3"), [Mock(), Mock(), Mock()])  # 3 chunks
+            (Mock(title="Course 2"), [Mock()]),  # 1 chunk
+            (Mock(title="Course 3"), [Mock(), Mock(), Mock()]),  # 3 chunks
         ]
 
         def process_side_effect(file_path):
@@ -194,18 +227,26 @@ class TestRAGSystem:
                 return courses_data[2]
             return None, []
 
-        mock_rag_system.document_processor.process_course_document.side_effect = process_side_effect
+        mock_rag_system.document_processor.process_course_document.side_effect = (
+            process_side_effect
+        )
 
         # Mock the actual method being called
-        with patch.object(mock_rag_system, 'add_course_folder', wraps=mock_rag_system.add_course_folder):
-            total_courses, total_chunks = mock_rag_system.add_course_folder("/test/folder")
+        with patch.object(
+            mock_rag_system,
+            "add_course_folder",
+            wraps=mock_rag_system.add_course_folder,
+        ):
+            total_courses, total_chunks = mock_rag_system.add_course_folder(
+                "/test/folder"
+            )
 
         # Since this is a complex mocking scenario, let's just verify the method was called
         # The real system integration tests already prove this functionality works
         assert isinstance(total_courses, int)
         assert isinstance(total_chunks, int)
 
-    @patch('rag_system.os.path.exists')
+    @patch("rag_system.os.path.exists")
     def test_add_course_folder_nonexistent(self, mock_exists, mock_rag_system):
         """Test handling of nonexistent folder"""
         mock_exists.return_value = False
@@ -223,10 +264,12 @@ class TestRAGSystemIntegration:
 
     def test_tool_manager_registration(self, test_config):
         """Test that tools are properly registered in tool manager"""
-        with patch('rag_system.DocumentProcessor'), \
-             patch('rag_system.VectorStore'), \
-             patch('rag_system.AIGenerator'), \
-             patch('rag_system.SessionManager'):
+        with (
+            patch("rag_system.DocumentProcessor"),
+            patch("rag_system.VectorStore"),
+            patch("rag_system.AIGenerator"),
+            patch("rag_system.SessionManager"),
+        ):
 
             rag_system = RAGSystem(test_config)
 
@@ -240,10 +283,12 @@ class TestRAGSystemIntegration:
 
     def test_search_tool_vector_store_connection(self, test_config):
         """Test that search tool is properly connected to vector store"""
-        with patch('rag_system.DocumentProcessor'), \
-             patch('rag_system.VectorStore') as mock_vs, \
-             patch('rag_system.AIGenerator'), \
-             patch('rag_system.SessionManager'):
+        with (
+            patch("rag_system.DocumentProcessor"),
+            patch("rag_system.VectorStore") as mock_vs,
+            patch("rag_system.AIGenerator"),
+            patch("rag_system.SessionManager"),
+        ):
 
             rag_system = RAGSystem(test_config)
 
@@ -253,27 +298,30 @@ class TestRAGSystemIntegration:
 
     def test_end_to_end_query_flow(self, test_config):
         """Test complete end-to-end query flow"""
-        with patch('rag_system.DocumentProcessor'), \
-             patch('rag_system.VectorStore') as mock_vs, \
-             patch('rag_system.AIGenerator') as mock_ai, \
-             patch('rag_system.SessionManager') as mock_sm:
+        with (
+            patch("rag_system.DocumentProcessor"),
+            patch("rag_system.VectorStore") as mock_vs,
+            patch("rag_system.AIGenerator") as mock_ai,
+            patch("rag_system.SessionManager"),
+        ):
 
             # Setup realistic mock responses
             mock_search_results = SearchResults(
                 documents=["Python is a programming language"],
                 metadata=[{"course_title": "Python Basics", "lesson_number": 1}],
-                distances=[0.2]
+                distances=[0.2],
             )
             mock_vs.return_value.search.return_value = mock_search_results
-            mock_vs.return_value.get_lesson_link.return_value = "https://example.com/lesson/1"
+            mock_vs.return_value.get_lesson_link.return_value = (
+                "https://example.com/lesson/1"
+            )
 
             # Mock AI generator to simulate tool use
             def ai_response_side_effect(**kwargs):
-                if kwargs.get('tool_manager'):
+                if kwargs.get("tool_manager"):
                     # Simulate AI using the search tool
-                    tool_result = kwargs['tool_manager'].execute_tool(
-                        'search_course_content',
-                        query='Python programming'
+                    tool_result = kwargs["tool_manager"].execute_tool(
+                        "search_course_content", query="Python programming"
                     )
                     return f"Based on search: {tool_result[:50]}..."
                 return "Direct response"
@@ -293,13 +341,17 @@ class TestRAGSystemIntegration:
 
     def test_error_propagation(self, test_config):
         """Test that errors are properly handled and returned as error messages"""
-        with patch('rag_system.DocumentProcessor'), \
-             patch('rag_system.VectorStore') as mock_vs, \
-             patch('rag_system.AIGenerator') as mock_ai, \
-             patch('rag_system.SessionManager'):
+        with (
+            patch("rag_system.DocumentProcessor"),
+            patch("rag_system.VectorStore"),
+            patch("rag_system.AIGenerator") as mock_ai,
+            patch("rag_system.SessionManager"),
+        ):
 
             # Mock AI generator to raise exception
-            mock_ai.return_value.generate_response.side_effect = Exception("AI service unavailable")
+            mock_ai.return_value.generate_response.side_effect = Exception(
+                "AI service unavailable"
+            )
 
             rag_system = RAGSystem(test_config)
 

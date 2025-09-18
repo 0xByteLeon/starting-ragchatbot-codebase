@@ -1,7 +1,8 @@
-import pytest
-import tempfile
-import shutil
 import os
+import shutil
+import tempfile
+
+import pytest
 from config import Config
 from rag_system import RAGSystem
 
@@ -70,8 +71,12 @@ class TestRealSystemIntegration:
                         print(f"✗ Vector store search error: {results.error}")
                         raise Exception(f"Vector store search failed: {results.error}")
                     else:
-                        print(f"✓ Vector store search returned {len(results.documents)} results")
-                        print(f"Sample result: {results.documents[0][:100] if results.documents else 'No documents'}")
+                        print(
+                            f"✓ Vector store search returned {len(results.documents)} results"
+                        )
+                        print(
+                            f"Sample result: {results.documents[0][:100] if results.documents else 'No documents'}"
+                        )
                 else:
                     print("✗ No chunks loaded for search test")
             else:
@@ -126,8 +131,7 @@ class TestRealSystemIntegration:
                 if chunks > 0:
                     # Test tool manager execution
                     result = rag_system.tool_manager.execute_tool(
-                        "search_course_content",
-                        query="programming"
+                        "search_course_content", query="programming"
                     )
                     print(f"✓ Tool manager result: {result[:200]}...")
 
@@ -163,11 +167,13 @@ class TestRealSystemIntegration:
                 response = rag_system.ai_generator.generate_response(
                     "What is Python?",
                     tools=rag_system.tool_manager.get_tool_definitions(),
-                    tool_manager=rag_system.tool_manager
+                    tool_manager=rag_system.tool_manager,
                 )
                 print(f"✗ Unexpected success: {response}")
             except Exception as ai_error:
-                print(f"✓ Expected AI error (no valid API key): {type(ai_error).__name__}: {ai_error}")
+                print(
+                    f"✓ Expected AI error (no valid API key): {type(ai_error).__name__}: {ai_error}"
+                )
                 # This is expected - we don't have a real API key
 
         except Exception as e:
@@ -177,19 +183,22 @@ class TestRealSystemIntegration:
     def test_check_dependencies(self):
         """Test that all required dependencies are available"""
         try:
-            import chromadb
+            import chromadb  # noqa: F401
+
             print("✓ chromadb available")
         except ImportError as e:
             print(f"✗ chromadb missing: {e}")
 
         try:
-            import anthropic
+            import anthropic  # noqa: F401
+
             print("✓ anthropic available")
         except ImportError as e:
             print(f"✗ anthropic missing: {e}")
 
         try:
-            import sentence_transformers
+            import sentence_transformers  # noqa: F401
+
             print("✓ sentence_transformers available")
         except ImportError as e:
             print(f"✗ sentence_transformers missing: {e}")
@@ -210,17 +219,21 @@ class TestRealSystemIntegration:
 
             docs_path = "../docs"
             if os.path.exists(docs_path):
-                files = [f for f in os.listdir(docs_path) if f.endswith('.txt')]
+                files = [f for f in os.listdir(docs_path) if f.endswith(".txt")]
                 if files:
                     test_file = os.path.join(docs_path, files[0])
                     print(f"Testing document processor with: {test_file}")
 
-                    course, chunks = rag_system.document_processor.process_course_document(test_file)
+                    course, chunks = (
+                        rag_system.document_processor.process_course_document(test_file)
+                    )
 
                     if course:
                         print(f"✓ Course processed: {course.title}")
                         print(f"✓ Chunks created: {len(chunks)}")
-                        print(f"✓ Sample chunk: {chunks[0].content[:100] if chunks else 'No chunks'}...")
+                        print(
+                            f"✓ Sample chunk: {chunks[0].content[:100] if chunks else 'No chunks'}..."
+                        )
                     else:
                         print("✗ No course data returned from document processor")
                 else:

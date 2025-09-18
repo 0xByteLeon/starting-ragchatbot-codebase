@@ -1,7 +1,6 @@
-import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
+
 from ai_generator import AIGenerator
-from search_tools import ToolManager, CourseSearchTool
 
 
 class TestAIGenerator:
@@ -12,7 +11,7 @@ class TestAIGenerator:
         ai_gen = AIGenerator("test-key", "claude-sonnet-4-20250514")
 
         # Mock the client
-        with patch.object(ai_gen, 'client', mock_anthropic_client):
+        with patch.object(ai_gen, "client", mock_anthropic_client):
             response = ai_gen.generate_response("What is Python?")
 
         # Verify client was called correctly
@@ -38,8 +37,8 @@ class TestAIGenerator:
         ai_gen = AIGenerator("test-key", "claude-sonnet-4-20250514")
         history = "User: Hello\nAssistant: Hi there!"
 
-        with patch.object(ai_gen, 'client', mock_anthropic_client):
-            response = ai_gen.generate_response("How are you?", conversation_history=history)
+        with patch.object(ai_gen, "client", mock_anthropic_client):
+            ai_gen.generate_response("How are you?", conversation_history=history)
 
         # Verify system prompt includes history
         call_args = mock_anthropic_client.messages.create.call_args[1]
@@ -54,11 +53,9 @@ class TestAIGenerator:
         mock_tools = [{"name": "test_tool", "description": "A test tool"}]
         mock_tool_manager = Mock()
 
-        with patch.object(ai_gen, 'client', mock_anthropic_client):
+        with patch.object(ai_gen, "client", mock_anthropic_client):
             result = ai_gen.generate_response(
-                "What is Python?",
-                tools=mock_tools,
-                tool_manager=mock_tool_manager
+                "What is Python?", tools=mock_tools, tool_manager=mock_tool_manager
             )
 
         # Should return tuple (response, sources) when tools are provided
@@ -82,17 +79,19 @@ class TestAIGenerator:
         ai_gen = AIGenerator("test-key", "claude-sonnet-4-20250514")
 
         # Create mock tools and tool manager
-        mock_tools = [{"name": "search_course_content", "description": "Search course content"}]
+        mock_tools = [
+            {"name": "search_course_content", "description": "Search course content"}
+        ]
         mock_tool_manager = Mock()
         mock_tool_manager.execute_tool.return_value = "Tool execution result"
         mock_tool_manager.get_last_sources.return_value = []
         mock_tool_manager.reset_sources.return_value = None
 
-        with patch.object(ai_gen, 'client', mock_anthropic_client_with_tool_use):
+        with patch.object(ai_gen, "client", mock_anthropic_client_with_tool_use):
             result = ai_gen.generate_response(
                 "Find information about Python",
                 tools=mock_tools,
-                tool_manager=mock_tool_manager
+                tool_manager=mock_tool_manager,
             )
 
         # Should return tuple (response, sources) when tools are provided
@@ -101,8 +100,7 @@ class TestAIGenerator:
 
         # Verify tool was executed
         mock_tool_manager.execute_tool.assert_called_once_with(
-            "search_course_content",
-            query="test query"
+            "search_course_content", query="test query"
         )
 
         # Verify two API calls were made (initial + follow-up)
@@ -131,7 +129,7 @@ class TestAIGenerator:
         # Mock base parameters
         base_params = {
             "messages": [{"role": "user", "content": "Tell me about Python"}],
-            "system": "You are a helpful assistant"
+            "system": "You are a helpful assistant",
         }
 
         # Mock client for final call
@@ -141,22 +139,21 @@ class TestAIGenerator:
         mock_final_response.content[0].text = "Based on search results: Python is..."
         mock_client.messages.create.return_value = mock_final_response
 
-        with patch.object(ai_gen, 'client', mock_client):
+        with patch.object(ai_gen, "client", mock_client):
             result = ai_gen._handle_tool_execution(
-                mock_initial_response,
-                base_params,
-                mock_tool_manager
+                mock_initial_response, base_params, mock_tool_manager
             )
 
         # Verify tool was executed
         mock_tool_manager.execute_tool.assert_called_once_with(
-            "search_course_content",
-            query="Python basics"
+            "search_course_content", query="Python basics"
         )
 
         # Verify final API call structure
         final_call_args = mock_client.messages.create.call_args[1]
-        assert len(final_call_args["messages"]) == 3  # original + assistant + tool result
+        assert (
+            len(final_call_args["messages"]) == 3
+        )  # original + assistant + tool result
 
         # Check tool result message format
         tool_result_message = final_call_args["messages"][2]
@@ -164,7 +161,10 @@ class TestAIGenerator:
         assert len(tool_result_message["content"]) == 1
         assert tool_result_message["content"][0]["type"] == "tool_result"
         assert tool_result_message["content"][0]["tool_use_id"] == "tool_123"
-        assert tool_result_message["content"][0]["content"] == "Search results about Python"
+        assert (
+            tool_result_message["content"][0]["content"]
+            == "Search results about Python"
+        )
 
         assert result == "Based on search results: Python is..."
 
@@ -192,12 +192,12 @@ class TestAIGenerator:
         mock_tool_manager = Mock()
         mock_tool_manager.execute_tool.side_effect = [
             "Search result 1",
-            "Outline result"
+            "Outline result",
         ]
 
         base_params = {
             "messages": [{"role": "user", "content": "Test query"}],
-            "system": "Test system"
+            "system": "Test system",
         }
 
         # Mock client
@@ -207,17 +207,19 @@ class TestAIGenerator:
         mock_final_response.content[0].text = "Combined results response"
         mock_client.messages.create.return_value = mock_final_response
 
-        with patch.object(ai_gen, 'client', mock_client):
+        with patch.object(ai_gen, "client", mock_client):
             result = ai_gen._handle_tool_execution(
-                mock_initial_response,
-                base_params,
-                mock_tool_manager
+                mock_initial_response, base_params, mock_tool_manager
             )
 
         # Verify both tools were executed
         assert mock_tool_manager.execute_tool.call_count == 2
-        mock_tool_manager.execute_tool.assert_any_call("search_course_content", query="Python")
-        mock_tool_manager.execute_tool.assert_any_call("get_course_outline", course_title="Python Basics")
+        mock_tool_manager.execute_tool.assert_any_call(
+            "search_course_content", query="Python"
+        )
+        mock_tool_manager.execute_tool.assert_any_call(
+            "get_course_outline", course_title="Python Basics"
+        )
 
         # Verify tool results structure
         final_call_args = mock_client.messages.create.call_args[1]
@@ -264,7 +266,7 @@ class TestAIGenerator:
 
         base_params = {
             "messages": [{"role": "user", "content": "Test"}],
-            "system": "Test system"
+            "system": "Test system",
         }
 
         mock_client = Mock()
@@ -273,13 +275,11 @@ class TestAIGenerator:
         mock_final_response.content[0].text = "Error handled response"
         mock_client.messages.create.return_value = mock_final_response
 
-        with patch.object(ai_gen, 'client', mock_client):
+        with patch.object(ai_gen, "client", mock_client):
             # This should not raise an exception, but handle it gracefully
             try:
-                result = ai_gen._handle_tool_execution(
-                    mock_initial_response,
-                    base_params,
-                    mock_tool_manager
+                ai_gen._handle_tool_execution(
+                    mock_initial_response, base_params, mock_tool_manager
                 )
                 # The method should still try to get a final response
                 assert mock_client.messages.create.called
@@ -287,20 +287,22 @@ class TestAIGenerator:
                 # If an exception is raised, it should be the original tool error
                 assert "Tool execution failed" in str(e)
 
-    def test_multi_round_tool_execution(self, mock_anthropic_client_multi_round, mock_tool_manager_with_sources):
+    def test_multi_round_tool_execution(
+        self, mock_anthropic_client_multi_round, mock_tool_manager_with_sources
+    ):
         """Test multi-round tool execution with 2 rounds"""
         ai_gen = AIGenerator("test-key", "claude-sonnet-4-20250514")
 
         mock_tools = [
             {"name": "get_course_outline", "description": "Get course outline"},
-            {"name": "search_course_content", "description": "Search course content"}
+            {"name": "search_course_content", "description": "Search course content"},
         ]
 
-        with patch.object(ai_gen, 'client', mock_anthropic_client_multi_round):
+        with patch.object(ai_gen, "client", mock_anthropic_client_multi_round):
             result = ai_gen.generate_response(
                 "Find a course that discusses the same topic as lesson 2 of Python Basics",
                 tools=mock_tools,
-                tool_manager=mock_tool_manager_with_sources
+                tool_manager=mock_tool_manager_with_sources,
             )
 
         # Should return tuple (response, sources)
@@ -312,8 +314,12 @@ class TestAIGenerator:
 
         # Verify both tools were executed
         assert mock_tool_manager_with_sources.execute_tool.call_count == 2
-        mock_tool_manager_with_sources.execute_tool.assert_any_call("get_course_outline", course_title="Python Basics")
-        mock_tool_manager_with_sources.execute_tool.assert_any_call("search_course_content", query="variables and data types")
+        mock_tool_manager_with_sources.execute_tool.assert_any_call(
+            "get_course_outline", course_title="Python Basics"
+        )
+        mock_tool_manager_with_sources.execute_tool.assert_any_call(
+            "search_course_content", query="variables and data types"
+        )
 
         # Verify sources were aggregated from both rounds
         assert len(sources) == 2
@@ -323,17 +329,21 @@ class TestAIGenerator:
         # Check final response
         assert response == "Based on the course outline and search, here is the answer"
 
-    def test_multi_round_early_termination(self, mock_anthropic_client_single_round_stop, mock_tool_manager_with_sources):
+    def test_multi_round_early_termination(
+        self, mock_anthropic_client_single_round_stop, mock_tool_manager_with_sources
+    ):
         """Test that multi-round stops early when no more tools are needed"""
         ai_gen = AIGenerator("test-key", "claude-sonnet-4-20250514")
 
-        mock_tools = [{"name": "search_course_content", "description": "Search course content"}]
+        mock_tools = [
+            {"name": "search_course_content", "description": "Search course content"}
+        ]
 
-        with patch.object(ai_gen, 'client', mock_anthropic_client_single_round_stop):
+        with patch.object(ai_gen, "client", mock_anthropic_client_single_round_stop):
             result = ai_gen.generate_response(
                 "What is Python?",
                 tools=mock_tools,
-                tool_manager=mock_tool_manager_with_sources
+                tool_manager=mock_tool_manager_with_sources,
             )
 
         # Should return tuple (response, sources)
@@ -345,7 +355,9 @@ class TestAIGenerator:
 
         # Verify only one tool was executed
         assert mock_tool_manager_with_sources.execute_tool.call_count == 1
-        mock_tool_manager_with_sources.execute_tool.assert_called_with("search_course_content", query="Python basics")
+        mock_tool_manager_with_sources.execute_tool.assert_called_with(
+            "search_course_content", query="Python basics"
+        )
 
         # Check response
         assert response == "Here is the complete answer from the first search"
@@ -382,14 +394,16 @@ class TestAIGenerator:
 
         mock_client.messages.create.side_effect = track_create_calls
 
-        mock_tools = [{"name": "search_course_content", "description": "Search course content"}]
+        mock_tools = [
+            {"name": "search_course_content", "description": "Search course content"}
+        ]
 
-        with patch.object(ai_gen, 'client', mock_client):
-            result = ai_gen.generate_response(
+        with patch.object(ai_gen, "client", mock_client):
+            ai_gen.generate_response(
                 "Test query",
                 conversation_history="Previous: Hello\nAssistant: Hi there!",
                 tools=mock_tools,
-                tool_manager=mock_tool_manager_with_sources
+                tool_manager=mock_tool_manager_with_sources,
             )
 
         # Verify conversation context was preserved
@@ -441,13 +455,15 @@ class TestAIGenerator:
 
         mock_client.messages.create.side_effect = always_tool_use
 
-        mock_tools = [{"name": "search_course_content", "description": "Search course content"}]
+        mock_tools = [
+            {"name": "search_course_content", "description": "Search course content"}
+        ]
 
-        with patch.object(ai_gen, 'client', mock_client):
+        with patch.object(ai_gen, "client", mock_client):
             result = ai_gen.generate_response(
                 "Test query",
                 tools=mock_tools,
-                tool_manager=mock_tool_manager_with_sources
+                tool_manager=mock_tool_manager_with_sources,
             )
 
         # Should return tuple (response, sources)
@@ -463,20 +479,22 @@ class TestAIGenerator:
         # Check final response
         assert response == "Final response after max rounds"
 
-    def test_multi_round_source_aggregation(self, mock_anthropic_client_multi_round, mock_tool_manager_with_sources):
+    def test_multi_round_source_aggregation(
+        self, mock_anthropic_client_multi_round, mock_tool_manager_with_sources
+    ):
         """Test that sources are properly aggregated across multiple rounds"""
         ai_gen = AIGenerator("test-key", "claude-sonnet-4-20250514")
 
         mock_tools = [
             {"name": "get_course_outline", "description": "Get course outline"},
-            {"name": "search_course_content", "description": "Search course content"}
+            {"name": "search_course_content", "description": "Search course content"},
         ]
 
-        with patch.object(ai_gen, 'client', mock_anthropic_client_multi_round):
+        with patch.object(ai_gen, "client", mock_anthropic_client_multi_round):
             result = ai_gen.generate_response(
                 "Multi-round query",
                 tools=mock_tools,
-                tool_manager=mock_tool_manager_with_sources
+                tool_manager=mock_tool_manager_with_sources,
             )
 
         # Should return tuple (response, sources)
@@ -536,14 +554,16 @@ class TestAIGenerator:
         mock_tool_manager_with_sources.execute_tool.side_effect = tool_with_error
         mock_client.messages.create.side_effect = error_in_second_round
 
-        mock_tools = [{"name": "search_course_content", "description": "Search course content"}]
+        mock_tools = [
+            {"name": "search_course_content", "description": "Search course content"}
+        ]
 
-        with patch.object(ai_gen, 'client', mock_client):
+        with patch.object(ai_gen, "client", mock_client):
             # Should handle error gracefully and not raise exception
             result = ai_gen.generate_response(
                 "Test query",
                 tools=mock_tools,
-                tool_manager=mock_tool_manager_with_sources
+                tool_manager=mock_tool_manager_with_sources,
             )
 
         # Should still return tuple even with error
@@ -558,7 +578,7 @@ class TestAIGenerator:
         """Test that single-round behavior is preserved when no tools are provided"""
         ai_gen = AIGenerator("test-key", "claude-sonnet-4-20250514")
 
-        with patch.object(ai_gen, 'client', mock_anthropic_client):
+        with patch.object(ai_gen, "client", mock_anthropic_client):
             result = ai_gen.generate_response("What is Python?")
 
         # Should return just the response text (not a tuple) for backward compatibility
