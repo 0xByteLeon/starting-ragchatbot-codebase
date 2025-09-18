@@ -1,5 +1,3 @@
-import pytest
-from unittest.mock import Mock, patch
 from search_tools import CourseSearchTool
 from vector_store import SearchResults
 
@@ -13,9 +11,7 @@ class TestCourseSearchTool:
 
         # Verify the vector store search was called
         course_search_tool.store.search.assert_called_once_with(
-            query="Python programming",
-            course_name=None,
-            lesson_number=None
+            query="Python programming", course_name=None, lesson_number=None
         )
 
         # Verify the result contains formatted content
@@ -25,7 +21,9 @@ class TestCourseSearchTool:
         # Verify sources were tracked
         assert len(course_search_tool.last_sources) == 1
         assert course_search_tool.last_sources[0]["text"] == "Python Basics - Lesson 1"
-        assert course_search_tool.last_sources[0]["link"] == "https://example.com/lesson/1"
+        assert (
+            course_search_tool.last_sources[0]["link"] == "https://example.com/lesson/1"
+        )
 
     def test_execute_with_course_name_filter(self, course_search_tool):
         """Test execute method with course name filter"""
@@ -33,9 +31,7 @@ class TestCourseSearchTool:
 
         # Verify the search was called with course name
         course_search_tool.store.search.assert_called_once_with(
-            query="variables",
-            course_name="Python Basics",
-            lesson_number=None
+            query="variables", course_name="Python Basics", lesson_number=None
         )
 
         # Verify result is formatted correctly
@@ -47,9 +43,7 @@ class TestCourseSearchTool:
 
         # Verify the search was called with lesson number
         course_search_tool.store.search.assert_called_once_with(
-            query="functions",
-            course_name=None,
-            lesson_number=2
+            query="functions", course_name=None, lesson_number=2
         )
 
         # Verify result is formatted correctly
@@ -57,17 +51,13 @@ class TestCourseSearchTool:
 
     def test_execute_with_both_filters(self, course_search_tool):
         """Test execute method with both course name and lesson number filters"""
-        result = course_search_tool.execute(
-            "loops",
-            course_name="Python Basics",
-            lesson_number=3
+        course_search_tool.execute(
+            "loops", course_name="Python Basics", lesson_number=3
         )
 
         # Verify the search was called with both filters
         course_search_tool.store.search.assert_called_once_with(
-            query="loops",
-            course_name="Python Basics",
-            lesson_number=3
+            query="loops", course_name="Python Basics", lesson_number=3
         )
 
     def test_execute_empty_results(self, course_search_tool_empty):
@@ -80,9 +70,7 @@ class TestCourseSearchTool:
     def test_execute_empty_results_with_filters(self, course_search_tool_empty):
         """Test execute method when no results found with filters"""
         result = course_search_tool_empty.execute(
-            "test",
-            course_name="Test Course",
-            lesson_number=1
+            "test", course_name="Test Course", lesson_number=1
         )
 
         # Should include filter information in the message
@@ -122,12 +110,12 @@ class TestCourseSearchTool:
         mock_results = SearchResults(
             documents=["Advanced Python concepts"],
             metadata=[{"course_title": "Advanced Python", "lesson_number": 5}],
-            distances=[0.2]
+            distances=[0.2],
         )
         mock_vector_store.search.return_value = mock_results
 
         tool = CourseSearchTool(mock_vector_store)
-        result = tool.execute("advanced concepts")
+        tool.execute("advanced concepts")
 
         # Verify lesson link was requested
         mock_vector_store.get_lesson_link.assert_called_once_with("Advanced Python", 5)
@@ -142,7 +130,7 @@ class TestCourseSearchTool:
         mock_results = SearchResults(
             documents=["Course overview content"],
             metadata=[{"course_title": "Overview Course", "lesson_number": None}],
-            distances=[0.3]
+            distances=[0.3],
         )
         mock_vector_store.search.return_value = mock_results
 
@@ -165,14 +153,14 @@ class TestCourseSearchTool:
             documents=["First result content", "Second result content"],
             metadata=[
                 {"course_title": "Course A", "lesson_number": 1},
-                {"course_title": "Course B", "lesson_number": 2}
+                {"course_title": "Course B", "lesson_number": 2},
             ],
-            distances=[0.1, 0.2]
+            distances=[0.1, 0.2],
         )
         mock_vector_store.search.return_value = mock_results
         mock_vector_store.get_lesson_link.side_effect = [
             "https://example.com/course-a/lesson/1",
-            "https://example.com/course-b/lesson/2"
+            "https://example.com/course-b/lesson/2",
         ]
 
         tool = CourseSearchTool(mock_vector_store)
@@ -199,17 +187,21 @@ class TestCourseSearchTool:
         mock_results = SearchResults(
             documents=["Different content"],
             metadata=[{"course_title": "Different Course", "lesson_number": 3}],
-            distances=[0.4]
+            distances=[0.4],
         )
         course_search_tool.store.search.return_value = mock_results
-        course_search_tool.store.get_lesson_link.return_value = "https://example.com/different/3"
+        course_search_tool.store.get_lesson_link.return_value = (
+            "https://example.com/different/3"
+        )
 
         course_search_tool.execute("second query")
 
         # Verify sources changed
         assert course_search_tool.last_sources != first_sources
         assert len(course_search_tool.last_sources) == 1
-        assert course_search_tool.last_sources[0]["text"] == "Different Course - Lesson 3"
+        assert (
+            course_search_tool.last_sources[0]["text"] == "Different Course - Lesson 3"
+        )
 
     def test_edge_case_empty_metadata(self, mock_vector_store):
         """Test handling of edge case where metadata might be missing fields"""
@@ -217,7 +209,7 @@ class TestCourseSearchTool:
         mock_results = SearchResults(
             documents=["Content with incomplete metadata"],
             metadata=[{}],  # Empty metadata
-            distances=[0.5]
+            distances=[0.5],
         )
         mock_vector_store.search.return_value = mock_results
 

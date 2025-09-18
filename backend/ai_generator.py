@@ -1,9 +1,11 @@
+from typing import Any
+
 import anthropic
-from typing import List, Optional, Dict, Any
+
 
 class AIGenerator:
     """Handles interactions with Anthropic's Claude API for generating responses"""
-    
+
     # Static system prompt to avoid rebuilding on each call
     SYSTEM_PROMPT = """ You are an AI assistant specialized in course materials and educational content with access to search tools for course information.
 
@@ -36,22 +38,21 @@ All responses must be:
 4. **Example-supported** - Include relevant examples when they aid understanding
 Provide only the direct answer to what was asked.
 """
-    
+
     def __init__(self, api_key: str, model: str):
         self.client = anthropic.Anthropic(api_key=api_key)
         self.model = model
-        
+
         # Pre-build base API parameters
-        self.base_params = {
-            "model": self.model,
-            "temperature": 0,
-            "max_tokens": 800
-        }
-    
-    def generate_response(self, query: str,
-                         conversation_history: Optional[str] = None,
-                         tools: Optional[List] = None,
-                         tool_manager=None):
+        self.base_params = {"model": self.model, "temperature": 0, "max_tokens": 800}
+
+    def generate_response(
+        self,
+        query: str,
+        conversation_history: str | None = None,
+        tools: list | None = None,
+        tool_manager=None,
+    ):
         """
         Generate AI response with multi-round tool support.
 
@@ -76,7 +77,7 @@ Provide only the direct answer to what was asked.
         api_params = {
             **self.base_params,
             "messages": [{"role": "user", "content": query}],
-            "system": system_content
+            "system": system_content,
         }
 
         # Add tools if available
@@ -85,7 +86,9 @@ Provide only the direct answer to what was asked.
             api_params["tool_choice"] = {"type": "auto"}
 
             # Use multi-round conversation for tool-enabled queries
-            response_text, sources = self._execute_multi_round_conversation(api_params, tool_manager)
+            response_text, sources = self._execute_multi_round_conversation(
+                api_params, tool_manager
+            )
             return response_text, sources
 
         # Simple response for non-tool queries
@@ -110,15 +113,16 @@ Provide only the direct answer to what was asked.
             if content_block.type == "tool_use":
                 try:
                     tool_result = tool_manager.execute_tool(
-                        content_block.name,
-                        **content_block.input
+                        content_block.name, **content_block.input
                     )
 
-                    tool_results.append({
-                        "type": "tool_result",
-                        "tool_use_id": content_block.id,
-                        "content": tool_result
-                    })
+                    tool_results.append(
+                        {
+                            "type": "tool_result",
+                            "tool_use_id": content_block.id,
+                            "content": tool_result,
+                        }
+                    )
 
                     # Collect sources from this tool execution
                     sources = tool_manager.get_last_sources()
@@ -126,15 +130,19 @@ Provide only the direct answer to what was asked.
                     tool_manager.reset_sources()
 
                 except Exception as e:
-                    tool_results.append({
-                        "type": "tool_result",
-                        "tool_use_id": content_block.id,
-                        "content": f"Tool execution failed: {str(e)}"
-                    })
+                    tool_results.append(
+                        {
+                            "type": "tool_result",
+                            "tool_use_id": content_block.id,
+                            "content": f"Tool execution failed: {str(e)}",
+                        }
+                    )
 
         return tool_results, round_sources
 
-    def _execute_multi_round_conversation(self, api_params: Dict[str, Any], tool_manager, max_rounds: int = 2):
+    def _execute_multi_round_conversation(
+        self, api_params: dict[str, Any], tool_manager, max_rounds: int = 2
+    ):
         """
         Execute multi-round conversation with tool calling capability.
 
@@ -151,10 +159,7 @@ Provide only the direct answer to what was asked.
 
         for round_num in range(1, max_rounds + 1):
             # Make API call with current messages
-            current_params = {
-                **api_params,
-                "messages": messages
-            }
+            current_params = {**api_params, "messages": messages}
             response = self.client.messages.create(**current_params)
 
             # Add assistant response to conversation
@@ -163,7 +168,9 @@ Provide only the direct answer to what was asked.
             # Check if tools are requested
             if response.stop_reason == "tool_use":
                 # Execute tools and collect results + sources
-                tool_results, round_sources = self._execute_tools_for_round(response, tool_manager)
+                tool_results, round_sources = self._execute_tools_for_round(
+                    response, tool_manager
+                )
                 messages.append({"role": "user", "content": tool_results})
                 all_sources.extend(round_sources)
 
@@ -175,7 +182,7 @@ Provide only the direct answer to what was asked.
                     final_params = {
                         **self.base_params,
                         "messages": messages,
-                        "system": api_params["system"]
+                        "system": api_params["system"],
                     }
                     final_response = self.client.messages.create(**final_params)
                     return final_response.content[0].text, all_sources
@@ -186,50 +193,53 @@ Provide only the direct answer to what was asked.
         # Fallback (shouldn't reach here)
         return "Unable to complete request within maximum rounds", all_sources
 
-    def _handle_tool_execution(self, initial_response, base_params: Dict[str, Any], tool_manager):
+    def _handle_tool_execution(
+        self, initial_response, base_params: dict[str, Any], tool_manager
+    ):
         """
         Handle execution of tool calls and get follow-up response.
-        
+
         Args:
             initial_response: The response containing tool use requests
             base_params: Base API parameters
             tool_manager: Manager to execute tools
-            
+
         Returns:
             Final response text after tool execution
         """
         # Start with existing messages
         messages = base_params["messages"].copy()
-        
+
         # Add AI's tool use response
         messages.append({"role": "assistant", "content": initial_response.content})
-        
+
         # Execute all tool calls and collect results
         tool_results = []
         for content_block in initial_response.content:
             if content_block.type == "tool_use":
                 tool_result = tool_manager.execute_tool(
-                    content_block.name, 
-                    **content_block.input
+                    content_block.name, **content_block.input
                 )
-                
-                tool_results.append({
-                    "type": "tool_result",
-                    "tool_use_id": content_block.id,
-                    "content": tool_result
-                })
-        
+
+                tool_results.append(
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": content_block.id,
+                        "content": tool_result,
+                    }
+                )
+
         # Add tool results as single message
         if tool_results:
             messages.append({"role": "user", "content": tool_results})
-        
+
         # Prepare final API call without tools
         final_params = {
             **self.base_params,
             "messages": messages,
-            "system": base_params["system"]
+            "system": base_params["system"],
         }
-        
+
         # Get final response
         final_response = self.client.messages.create(**final_params)
         return final_response.content[0].text

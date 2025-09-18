@@ -24,6 +24,23 @@ uv sync
 uv add package_name
 ```
 
+### Code Quality
+```bash
+# Format code with Black
+./scripts/format.sh
+# or manually: uv run black .
+
+# Lint code with Ruff
+./scripts/lint.sh
+# or manually: uv run ruff check . --fix
+
+# Run all quality checks (format + lint + tests)
+./scripts/quality-check.sh
+
+# Run tests only
+cd backend && uv run pytest tests/ -v
+```
+
 ### Environment Setup
 **Required Configuration:**
 1. Create a `.env` file in the `backend` directory:
@@ -128,3 +145,24 @@ To add new search tools:
 - always us uv to run the server do not use pip directly
 - make sure to use uv to manage all dependencies
 - don't run the server using ./run.sh I will start it myself
+
+### Code Quality Standards
+This codebase uses automated code quality tools:
+
+**Black (Code Formatter):**
+- Enforces consistent Python code style
+- Line length: 88 characters
+- Target Python version: 3.13
+- Run: `./scripts/format.sh` or `uv run black .`
+
+**Ruff (Linter):**
+- Fast Python linter with comprehensive rule set
+- Includes pycodestyle, pyflakes, isort, flake8-bugbear rules
+- Auto-fixes many issues
+- Run: `./scripts/lint.sh` or `uv run ruff check . --fix`
+
+**Quality Workflow:**
+1. Format code: `./scripts/format.sh`
+2. Fix lint issues: `./scripts/lint.sh`
+3. Run tests: `cd backend && uv run pytest tests/ -v`
+4. All-in-one: `./scripts/quality-check.sh`

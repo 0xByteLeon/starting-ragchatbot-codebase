@@ -1,20 +1,20 @@
-import pytest
-import tempfile
-import shutil
-from unittest.mock import Mock, MagicMock, patch
 import os
+import shutil
 import sys
+import tempfile
 from pathlib import Path
+from unittest.mock import Mock, MagicMock, patch
+
+import pytest
 
 # Add the backend directory to Python path so we can import modules
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from config import Config
-from vector_store import VectorStore, SearchResults
-from search_tools import CourseSearchTool, CourseOutlineTool, ToolManager
-from ai_generator import AIGenerator
+from models import Course, CourseChunk, Lesson
+from search_tools import CourseSearchTool
+from vector_store import SearchResults, VectorStore
 from rag_system import RAGSystem
-from models import Course, Lesson, CourseChunk
 
 # FastAPI testing imports
 from fastapi.testclient import TestClient
@@ -49,7 +49,7 @@ def mock_vector_store():
         documents=["Sample course content about Python programming"],
         metadata=[{"course_title": "Python Basics", "lesson_number": 1}],
         distances=[0.1],
-        error=None
+        error=None,
     )
 
     # Mock get_lesson_link method
@@ -65,10 +65,7 @@ def mock_vector_store_empty():
 
     # Mock empty search results
     mock_store.search.return_value = SearchResults(
-        documents=[],
-        metadata=[],
-        distances=[],
-        error=None
+        documents=[], metadata=[], distances=[], error=None
     )
 
     return mock_store
@@ -81,10 +78,7 @@ def mock_vector_store_error():
 
     # Mock error search results
     mock_store.search.return_value = SearchResults(
-        documents=[],
-        metadata=[],
-        distances=[],
-        error="ChromaDB connection failed"
+        documents=[], metadata=[], distances=[], error="ChromaDB connection failed"
     )
 
     return mock_store
@@ -98,9 +92,17 @@ def sample_course():
         instructor="John Doe",
         course_link="https://example.com/python-basics",
         lessons=[
-            Lesson(lesson_number=1, title="Introduction to Python", lesson_link="https://example.com/lesson/1"),
-            Lesson(lesson_number=2, title="Variables and Data Types", lesson_link="https://example.com/lesson/2")
-        ]
+            Lesson(
+                lesson_number=1,
+                title="Introduction to Python",
+                lesson_link="https://example.com/lesson/1",
+            ),
+            Lesson(
+                lesson_number=2,
+                title="Variables and Data Types",
+                lesson_link="https://example.com/lesson/2",
+            ),
+        ],
     )
 
 
@@ -112,14 +114,14 @@ def sample_course_chunks():
             content="Python is a high-level programming language",
             course_title="Python Basics",
             lesson_number=1,
-            chunk_index=0
+            chunk_index=0,
         ),
         CourseChunk(
             content="Variables in Python can store different types of data",
             course_title="Python Basics",
             lesson_number=2,
-            chunk_index=1
-        )
+            chunk_index=1,
+        ),
     ]
 
 
@@ -164,7 +166,10 @@ def mock_anthropic_client_with_tool_use():
     mock_final_response.stop_reason = "end_turn"
 
     # Setup client to return different responses for different calls
-    mock_client.messages.create.side_effect = [mock_initial_response, mock_final_response]
+    mock_client.messages.create.side_effect = [
+        mock_initial_response,
+        mock_final_response,
+    ]
 
     return mock_client
 
@@ -217,14 +222,16 @@ def mock_anthropic_client_multi_round():
     # Mock final response without tool use
     mock_final_response = Mock()
     mock_final_response.content = [Mock()]
-    mock_final_response.content[0].text = "Based on the course outline and search, here is the answer"
+    mock_final_response.content[0].text = (
+        "Based on the course outline and search, here is the answer"
+    )
     mock_final_response.stop_reason = "end_turn"
 
     # Setup client to return different responses for different calls
     mock_client.messages.create.side_effect = [
         mock_first_response,
         mock_second_response,
-        mock_final_response
+        mock_final_response,
     ]
 
     return mock_client
@@ -249,12 +256,14 @@ def mock_anthropic_client_single_round_stop():
     # Mock second response without tool use (stops after first round)
     mock_second_response = Mock()
     mock_second_response.content = [Mock()]
-    mock_second_response.content[0].text = "Here is the complete answer from the first search"
+    mock_second_response.content[0].text = (
+        "Here is the complete answer from the first search"
+    )
     mock_second_response.stop_reason = "end_turn"
 
     mock_client.messages.create.side_effect = [
         mock_first_response,
-        mock_second_response
+        mock_second_response,
     ]
 
     return mock_client
@@ -266,7 +275,6 @@ def mock_tool_manager_with_sources():
     mock_manager = Mock()
 
     # Track sources from multiple rounds
-    round_sources = []
 
     def mock_execute_tool(tool_name, **kwargs):
         if tool_name == "get_course_outline":
@@ -277,9 +285,16 @@ def mock_tool_manager_with_sources():
 
     def mock_get_last_sources():
         if mock_manager.execute_tool.call_count == 1:
-            return [{"text": "Python Basics Course", "link": "https://example.com/course"}]
+            return [
+                {"text": "Python Basics Course", "link": "https://example.com/course"}
+            ]
         elif mock_manager.execute_tool.call_count == 2:
-            return [{"text": "Python Basics - Lesson 2", "link": "https://example.com/lesson/2"}]
+            return [
+                {
+                    "text": "Python Basics - Lesson 2",
+                    "link": "https://example.com/lesson/2",
+                }
+            ]
         return []
 
     def mock_reset_sources():
@@ -290,7 +305,7 @@ def mock_tool_manager_with_sources():
     mock_manager.reset_sources.side_effect = mock_reset_sources
     mock_manager.get_tool_definitions.return_value = [
         {"name": "search_course_content", "description": "Search course content"},
-        {"name": "get_course_outline", "description": "Get course outline"}
+        {"name": "get_course_outline", "description": "Get course outline"},
     ]
 
     return mock_manager
