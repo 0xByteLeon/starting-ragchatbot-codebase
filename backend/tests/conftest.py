@@ -1,9 +1,10 @@
 import pytest
 import tempfile
 import shutil
-from unittest.mock import Mock, MagicMock
+from unittest.mock import Mock, MagicMock, patch
 import os
 import sys
+from pathlib import Path
 
 # Add the backend directory to Python path so we can import modules
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
@@ -14,6 +15,10 @@ from search_tools import CourseSearchTool, CourseOutlineTool, ToolManager
 from ai_generator import AIGenerator
 from rag_system import RAGSystem
 from models import Course, Lesson, CourseChunk
+
+# FastAPI testing imports
+from fastapi.testclient import TestClient
+from fastapi import FastAPI
 
 
 @pytest.fixture
@@ -289,3 +294,162 @@ def mock_tool_manager_with_sources():
     ]
 
     return mock_manager
+
+
+# API Testing Fixtures
+
+@pytest.fixture
+def test_frontend_dir():
+    """Create a temporary frontend directory with test files"""
+    temp_dir = tempfile.mkdtemp()
+
+    # Create test HTML file
+    html_content = '''<!DOCTYPE html>
+<html>
+<head><title>Test App</title></head>
+<body><h1>Test RAG System</h1></body>
+</html>'''
+
+    with open(os.path.join(temp_dir, 'index.html'), 'w') as f:
+        f.write(html_content)
+
+    # Create test CSS file
+    css_content = 'body { font-family: Arial, sans-serif; }'
+    with open(os.path.join(temp_dir, 'styles.css'), 'w') as f:
+        f.write(css_content)
+
+    yield temp_dir
+    shutil.rmtree(temp_dir)
+
+
+@pytest.fixture
+def mock_rag_system():
+    """Create a mock RAG system for API testing"""
+    mock_system = Mock(spec=RAGSystem)
+
+    # Mock successful query response
+    mock_system.query.return_value = (
+        "This is a test response about Python programming",
+        [{"text": "Python Basics - Lesson 1", "link": "https://example.com/lesson/1"}]
+    )
+
+    # Mock course analytics
+    mock_system.get_course_analytics.return_value = {
+        "total_courses": 2,
+        "course_titles": ["Python Basics", "JavaScript Fundamentals"]
+    }
+
+    # Mock session manager
+    mock_session_manager = Mock()
+    mock_session_manager.create_session.return_value = "test-session-123"
+    mock_session_manager.clear_session.return_value = None
+    mock_system.session_manager = mock_session_manager
+
+    return mock_system
+
+
+@pytest.fixture
+def test_app(mock_rag_system, test_frontend_dir):
+    """Create a test FastAPI app with mocked dependencies"""
+    from fastapi import FastAPI
+    from fastapi.staticfiles import StaticFiles
+    from fastapi.middleware.cors import CORSMiddleware
+    from fastapi.middleware.trustedhost import TrustedHostMiddleware
+    from pydantic import BaseModel
+    from typing import List, Optional
+
+    # Create test app
+    app = FastAPI(title="Test RAG System")
+
+    # Add middleware
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=["*"])
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    # Define models inline to avoid import issues
+    class QueryRequest(BaseModel):
+        query: str
+        session_id: Optional[str] = None
+
+    class SourceItem(BaseModel):
+        text: str
+        link: Optional[str] = None
+
+    class QueryResponse(BaseModel):
+        answer: str
+        sources: List[SourceItem]
+        session_id: str
+
+    class CourseStats(BaseModel):
+        total_courses: int
+        course_titles: List[str]
+
+    # API endpoints with mock system
+    @app.post("/api/query", response_model=QueryResponse)
+    async def query_documents(request: QueryRequest):
+        from fastapi import HTTPException
+        try:
+            # Use provided session_id or create new one
+            if request.session_id:
+                session_id = request.session_id
+            else:
+                session_id = mock_rag_system.session_manager.create_session()
+
+            answer, sources = mock_rag_system.query(request.query, session_id)
+            return QueryResponse(answer=answer, sources=sources, session_id=session_id)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @app.get("/api/courses", response_model=CourseStats)
+    async def get_course_stats():
+        from fastapi import HTTPException
+        try:
+            analytics = mock_rag_system.get_course_analytics()
+            return CourseStats(
+                total_courses=analytics["total_courses"],
+                course_titles=analytics["course_titles"]
+            )
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @app.delete("/api/sessions/{session_id}")
+    async def clear_session(session_id: str):
+        from fastapi import HTTPException
+        try:
+            mock_rag_system.session_manager.clear_session(session_id)
+            return {"message": f"Session {session_id} cleared successfully"}
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    # Mount static files
+    app.mount("/", StaticFiles(directory=test_frontend_dir, html=True), name="static")
+
+    return app
+
+
+@pytest.fixture
+def test_client(test_app):
+    """Create a test client for the FastAPI app"""
+    return TestClient(test_app)
+
+
+@pytest.fixture
+def sample_query_request():
+    """Sample query request data for testing"""
+    return {
+        "query": "What is Python programming?",
+        "session_id": "test-session-123"
+    }
+
+
+@pytest.fixture
+def sample_query_request_no_session():
+    """Sample query request without session ID"""
+    return {
+        "query": "What are variables in Python?"
+    }
